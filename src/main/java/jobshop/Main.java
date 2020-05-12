@@ -24,6 +24,9 @@ public class Main {
         solvers = new HashMap<>();
         solvers.put("basic", new BasicSolver());
         solvers.put("random", new RandomSolver());
+        solvers.put("greedy", new GreedySolver());
+        solvers.put("descent", new DescentSolver());
+        solvers.put("taboo", new TabooSolver());
         // add new solvers here
     }
 
@@ -135,6 +138,8 @@ public class Main {
             for(int solverId = 0 ; solverId < solversToTest.size() ; solverId++) {
                 output.printf("%7.1f %8s %5.1f        ", runtimes[solverId], "-", distances[solverId]);
             }
+
+            System.out.println("\n");
 
 
 

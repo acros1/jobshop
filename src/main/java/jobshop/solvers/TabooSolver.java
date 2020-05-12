@@ -10,7 +10,7 @@ import jobshop.encodings.Task;
 import java.util.List;
 import java.util.ArrayList;
 
-public class DescentSolver implements Solver {
+public class TabooSolver implements Solver {
 
     /** A block represents a subsequence of the critical path such that all tasks in it execute on the same machine.
      * This class identifies a block in a ResourceOrder representation.
@@ -84,46 +84,56 @@ public class DescentSolver implements Solver {
     }
 
     private Instance instance = null;
+    private int cptMax = 100;
+    private int tabooTimer = 10;
 
     @Override
     public Result solve(Instance instance, long deadline) {
         this.instance = instance;
         // Init = Greedy solver
-        GreedySolver greedy = new GreedySolver();
+        DescentSolver greedy = new DescentSolver();
         Schedule bestSched = greedy.solve(instance, deadline).schedule;
         ResourceOrder bestROrder = new ResourceOrder(bestSched);
         
-        int nbSol = 0;
+        // Iteration counter
+        int cpt = 0;
         // Time check
         long time = System.currentTimeMillis();
-        // Clear display
-        // System.out.println();
+        // Taboo matrix
+        int sTaboo[][] = new int[instance.numTasks*instance.numJobs][instance.numTasks*instance.numJobs];
 
-        while ( System.currentTimeMillis() - time <= deadline ) {
+        while ( (System.currentTimeMillis() - time <= deadline) && (cpt < this.cptMax) ) {
+            cpt++;
             // For neighbors exploration
             List<Swap> neighbors = new ArrayList<Swap>();
             ResourceOrder bestNeighbor = null;
             List<Block> blockList = blocksOfCriticalPath(bestROrder);
+            Swap bestSwap = null;
 
             for ( Block b : blockList ) {
                 neighbors = neighbors(b);
                 for ( Swap s : neighbors ) {
                     ResourceOrder currentSol = bestROrder.copy();
-                    // Creating neighbor
-                    s.applyOn(currentSol);
-                    // Compare current to best neighbor
-                    if ( bestNeighbor != null ) {
-                        if ( currentSol.toSchedule() != null ) {
-                            if ( currentSol.toSchedule().makespan() < bestNeighbor.toSchedule().makespan() ) {
-                                bestNeighbor = currentSol.copy();
+                    // Check if neighbor is taboo
+                    if ( sTaboo[s.t1+(s.machine*(instance.numTasks-1))][s.t2+(s.machine*(instance.numTasks-1))] < cpt ) {
+                        // Creating neighbor
+                        s.applyOn(currentSol);
+                        // Compare current to best neighbor
+                        if ( bestNeighbor != null ) {
+                            if ( currentSol.toSchedule() != null ) {
+                                if ( currentSol.toSchedule().makespan() < bestNeighbor.toSchedule().makespan() ) {
+                                    bestNeighbor = currentSol.copy();
+                                    bestSwap = new Swap(s.machine, s.t1, s.t2);
+                                }
+                            }
+                            else {
+                                // System.out.println("currentSol.toSchedule is null");
                             }
                         }
                         else {
-                            System.out.println("currentSol.toSchedule is null");
+                            bestNeighbor = currentSol.copy();
+                            bestSwap = new Swap(s.machine, s.t1, s.t2);
                         }
-                    }
-                    else {
-                        bestNeighbor = currentSol.copy();
                     }
                 }
             }
@@ -131,12 +141,9 @@ public class DescentSolver implements Solver {
             if ( bestNeighbor.toSchedule().makespan() < bestSched.makespan() ) {
                 bestROrder = bestNeighbor.copy();
                 bestSched = bestROrder.toSchedule();
-                nbSol++;
-                // System.out.println("New best solution ! Iteration : " + nbSol + " | Makespan : " + bestSched.makespan());
-            }
-            else {
-                // System.out.println("There is no better solution !!!!!");
-                return new Result(instance, bestSched, Result.ExitCause.Blocked);
+                // Add neighbor to sTaboo
+                sTaboo[bestSwap.t2+(bestSwap.machine*(instance.numTasks-1))][bestSwap.t1+(bestSwap.machine*(instance.numTasks-1))] = this.tabooTimer + cpt;
+                // System.out.println("New best solution ! Iteration : " + cpt + " | Makespan : " + bestSched.makespan());
             }
         }
         // System.out.println("Time out !!!!! Stop !");

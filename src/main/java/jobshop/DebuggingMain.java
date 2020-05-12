@@ -1,6 +1,11 @@
 package jobshop;
 
 import jobshop.encodings.JobNumbers;
+import jobshop.encodings.ResourceOrder;
+import jobshop.solvers.DescentSolver;
+
+import java.util.List;
+import java.util.ArrayList;
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -32,6 +37,21 @@ public class DebuggingMain {
             System.out.println("SCHEDULE: " + sched);
             System.out.println("VALID: " + sched.isValid());
             System.out.println("MAKESPAN: " + sched.makespan());
+
+            // Testing descent methods
+            ResourceOrder rOrder = new ResourceOrder(sched);
+            //System.out.println(rOrder);
+            //System.out.println("---------------------------------------");
+            DescentSolver solver = new DescentSolver();
+            List<DescentSolver.Block> path = solver.blocksOfCriticalPath(rOrder);
+            List<DescentSolver.Swap> neighbors;
+            for ( DescentSolver.Block b : path) {
+                neighbors = solver.neighbors(b);
+                for ( DescentSolver.Swap s : neighbors ) {
+                    s.applyOn(rOrder);
+                }
+            }
+            //System.out.println(rOrder);
 
         } catch (IOException e) {
             e.printStackTrace();
